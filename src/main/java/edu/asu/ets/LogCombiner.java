@@ -4,15 +4,32 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Scanner;
 
 public class LogCombiner {
 
 	public static final String DELIMITER = "/";
 
-	public static void combine(String args) {
+	public static void combine(Map<String, Integer> countmap, String path) {
+		String destFileName = path + DELIMITER + "counts.log";
+		try {
+			BufferedWriter writer = new BufferedWriter(new FileWriter(destFileName));
+			
+			for(Map.Entry<String, Integer> entry: countmap.entrySet()) {
+				writer.write(entry.getKey() + ":= " + entry.getValue()+ "\n");
+			}
+			writer.close();
+		}catch(IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+	
+	public static String combine(String args) {
 
 		LogCombiner logc = new LogCombiner();
 		String[] allfiles = logc.getAllFiles(args);
@@ -26,13 +43,26 @@ public class LogCombiner {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		return destFileName;
 	}
 
 	private String[] getAllFiles(String dirPath) {
 		File files = new File(dirPath);
 		String[] allfiles = null;
 		if (files.exists() && files.isDirectory()) {
-			allfiles = files.list();
+			FilenameFilter licenseFilter = new FilenameFilter() {
+
+				public boolean accept(File dir, String name) {
+					if (name.contains("."))
+						return true;
+					else
+						return false;
+				}
+			};
+			
+			
+			
+			allfiles = files.list(licenseFilter);
 		}
 
 		Arrays.sort(allfiles, (a, b) -> {

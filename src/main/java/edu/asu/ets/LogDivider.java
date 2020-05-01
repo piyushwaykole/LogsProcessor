@@ -21,13 +21,10 @@ public class LogDivider {
 	public static final String LICENSE_FILE_ABAQUS = "abaquslm.log";
 	public static final String TIMESTAMP = "TIMESTAMP";
 	public static final String DELIMITER = "/";
+	public static final String UNKNOWN_FILE_NAME = "unknown_logs";
 
+	
 	private String firstInEveryFile = "";
-	private String rootPath;
-
-	public LogDivider(String path) {
-		this.rootPath = path;
-	}
 
 	public static void main(String[] args) {
 
@@ -35,10 +32,11 @@ public class LogDivider {
 		if (args[0].charAt(args[0].length() - 1) == '/')
 			rootpath = args[0].substring(0, args[0].length() - 1);
 
-		LogDivider logc = new LogDivider(rootpath);
+		LogDivider logc = new LogDivider();
 		String[] filenames;
 		try {
 			filenames = logc.getLicenseFileNames(rootpath);
+			System.out.println("License files found :- ");
 
 			for (String f : filenames) {
 				System.out.println(f);
@@ -54,6 +52,8 @@ public class LogDivider {
 			logFolder.mkdir();
 		}
 
+		System.out.println("----------------------------------------------------------------------------------------------");
+		System.out.println("Processing log files :-");
 		for (String f : filenames) {
 
 			String file = rootpath + DELIMITER + f;
@@ -63,6 +63,7 @@ public class LogDivider {
 				logc.firstInEveryFile = null;
 				Map<String, StringBuilder> m = logc.createSeperateFiles(scanner);
 				logc.saveMapToFiles(rootpath, m);
+				scanner.close();
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -73,7 +74,17 @@ public class LogDivider {
 
 		}
 		String path = rootpath + DELIMITER + "logs";
-		LogCombiner.combine(path);
+		String combined = LogCombiner.combine(path);
+		
+		
+		LogCounter logcounter =  new LogCounter();
+		
+		try {
+			logcounter.countLogs(combined, rootpath, args[1]);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 	}
 
@@ -108,6 +119,7 @@ public class LogDivider {
 		String firstDateInFile = null;
 		int firstDateCount = 0;
 
+		boolean doesNotContainTimeStamp = true;
 		String currentDate = null;
 
 		String line = "";
@@ -115,12 +127,21 @@ public class LogDivider {
 			line = scanner.nextLine();
 
 			if (line.contains(TIMESTAMP))
-				break;
-
+			{
+				doesNotContainTimeStamp = false;
+				break;	
+			}
+				
 			unknown.append("\n");
 			unknown.append(line);
 		}
 
+		// check if the file doesnt contain the timestamp.
+		if(doesNotContainTimeStamp) {
+			map.put(UNKNOWN_FILE_NAME, unknown);
+			return map;
+		}
+		
 		String[] splt = line.split(" ");
 		firstDateInFile = splt[splt.length - 1];
 		firstDateCount++;
@@ -215,9 +236,10 @@ public class LogDivider {
 		for (Map.Entry<String, StringBuilder> entry : map.entrySet()) {
 			String fileName = dirPath + DELIMITER + "logs" + DELIMITER + getFileName(entry.getKey());
 
+			System.out.println("Date found - " + entry.getKey());
 			File file = new File(fileName);
 			BufferedWriter writer = null;
-			if (entry.getKey().equals(this.firstInEveryFile) && file.exists()) {
+			if ((entry.getKey().equals(this.firstInEveryFile) || entry.getKey().equals(UNKNOWN_FILE_NAME)) && file.exists()) {
 				try {
 					writer = new BufferedWriter(new FileWriter(fileName, true));
 					writer.append(entry.getValue());
